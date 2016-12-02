@@ -1,0 +1,6 @@
+
+yakyak:
+  build: .
+  volumes:
+    - ./dist:/dist
+  command: bash -c "cp -R dist/* /dist"

@@ -3,7 +3,7 @@ module.exports = view (models) ->
 		if process.platform isnt 'darwin'
 			button title:'Menu', onclick:togglemenu, ->
 				i class:'material-icons', "menu"
-		span "Conversations"
+		span "Konverzace"
 
 togglemenu = ->
 	if process.platform isnt 'darwin'

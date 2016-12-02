@@ -19,22 +19,22 @@ module.exports = view (models) ->
       onclick:convoptions, -> span class:'material-icons', 'more_vert'
     div class:'convoptions', ->
       div class:'button', title:'Conversation settings',
-        div class:'button', title:'Toggle notifications', onclick:onclickaction('togglenotif'), ->
+        div class:'button', title:'Přepnout oznámení', onclick:onclickaction('togglenotif'), ->
                 if conv.isQuiet(c)
                     span class:'material-icons', 'notifications_off'
                 else
                     span class:'material-icons', 'notifications'
-                div class:'option-label', 'Notifications'
-            div class:'button', title:'Star/unstar', onclick:onclickaction('togglestar'), ->
+                div class:'option-label', 'Oznámení'
+            div class:'button', title:'O(d)značit hvězdičkou', onclick:onclickaction('togglestar'), ->
                   if not conv.isStarred(c)
                     span class:'material-icons', 'star_border'
                   else
                     span class:'material-icons', 'star'
-                  div class:'option-label', 'Favorite'
-              div class:'button', title:'Settings',
+                  div class:'option-label', 'Oblíbené'
+              div class:'button', title:'Nastavení',
           onclick:onclickaction('convsettings'), ->
             span class:'material-icons', 'info_outline'
-            div class:'option-label', 'Details'
+            div class:'option-label', 'Detaily'
 
 convoptions  = ->
   {viewstate} = models

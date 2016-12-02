@@ -106,8 +106,8 @@ module.exports = exp = layout ->
                 div () ->
                     img src: path.join __dirname, '..', '..', 'icons', 'yakyak-logo.svg'
                 div ->
-                    span class: 'text state_connecting', 'Connecting'
-                    span class: 'text state_contacts hide', 'Loading contacts'
+                    span class: 'text state_connecting', 'Připojování'
+                    span class: 'text state_contacts hide', 'Načítání kontaktů'
                 div class: 'spinner', ->
                     div class: 'bounce1', ''
                     div class: 'bounce2', ''

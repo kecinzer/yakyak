@@ -298,6 +298,10 @@ app.on 'ready', ->
     # no retries, dedupe on conv_id
     ipc.on 'setfocus', seqreq (ev, conv_id) ->
         client.setfocus conv_id
+        client.getconversation conv_id, new Date(), 1, true
+        .then (r) ->
+            ipcsend 'getconversationmetadata:response', r
+
     , false, (ev, conv_id) -> conv_id
 
     ipc.on 'appfocus', ->
@@ -359,7 +363,7 @@ app.on 'ready', ->
 
     # retry, one single per conv_id
     ipc.on 'getconversation', seqreq (ev, conv_id, timestamp, max) ->
-        client.getconversation(conv_id, timestamp, max).then (r) ->
+        client.getconversation(conv_id, timestamp, max, true).then (r) ->
             ipcsend 'getconversation:response', r
     , false, (ev, conv_id, timestamp, max) -> conv_id
 
@@ -379,12 +383,17 @@ app.on 'ready', ->
           show: false
           parent: mainWindow
           resizable: false
+          frame: false
+          titleBarStyle: 'hidden'
         }
 
         aboutWindow.loadURL 'file://' + __dirname + '/ui/about.html'
         aboutWindow.once 'ready-to-show', () ->
             aboutWindow.setMenu(null)
             aboutWindow.show()
+
+            aboutWindow.on 'blur', ->
+                aboutWindow.close()
 
     ipc.on 'errorInWindow', (ev, error) ->
         console.log "Error on YakYak window:\n", error, "\n--- End of error message in YakYak window."

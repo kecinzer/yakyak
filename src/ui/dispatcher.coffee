@@ -48,6 +48,10 @@ handle 'init', (init) ->
     require('./version').check()
 
 handle 'chat_message', (ev) ->
+    # TODO entity is not fetched in usable time for first notification
+    # if does not have user on cache
+    entity.needEntity ev.sender_id.chat_id unless entity[ev.sender_id.chat_id]?
+    # add chat to conversation
     conv.addChatMessage ev
     # these messages are to go through notifications
     notify.addToNotify ev
@@ -94,6 +98,12 @@ handle 'attop', (attop) ->
 handle 'history', (conv_id, timestamp) ->
     ipc.send 'getconversation', conv_id, timestamp, 20
 
+handle 'handleconversationmetadata', (r) ->
+    return unless r.conversation_state
+    # removing events so they don't get merged
+    r.conversation_state.event = null
+    conv.updateMetadata r.conversation_state
+
 handle 'handlehistory', (r) ->
     return unless r.conversation_state
     conv.updateHistory r.conversation_state
@@ -122,8 +132,14 @@ handle 'sendmessage', (txt = '') ->
 handle 'toggleshowtray', ->
     viewstate.setShowTray(not viewstate.showtray)
 
-handle 'toggleshowseenstatus', ->
-    viewstate.setShowSeenStatus(not viewstate.showseenstatus)
+handle 'forcecustomsound', (value) ->
+    viewstate.setForceCustomSound(value)
+
+handle 'showiconnotification', (value) ->
+    viewstate.setShowIconNotification(value)
+
+handle 'mutesoundnotification', ->
+    viewstate.setMuteSoundNotification(not viewstate.muteSoundNotification)
 
 handle 'togglemenu', ->
     mainWindow = remote.getCurrentWindow()
@@ -352,6 +368,8 @@ handle 'deleteconv', (confirmed) ->
             action 'deleteconv', true
     else
         ipc.send 'deleteconversation', conv_id
+        viewstate.selectConvIndex(0)
+        viewstate.setState(viewstate.STATE_NORMAL)
 
 handle 'leaveconv', (confirmed) ->
     conv_id = viewstate.selectedConv
@@ -360,6 +378,7 @@ handle 'leaveconv', (confirmed) ->
             action 'leaveconv', true
     else
         ipc.send 'removeuser', conv_id
+        viewstate.selectConvIndex(0)
         viewstate.setState(viewstate.STATE_NORMAL)
 
 handle 'lastkeydown', (time) -> viewstate.setLastKeyDown time
@@ -393,7 +412,10 @@ handle 'handlerecentconversations', (r) ->
     connection.setEventState connection.IN_SYNC
 
 handle 'client_conversation', (c) ->
-    conv.add c unless conv[c?.conversation_id?.id]
+    # Conversation must be added, even if already exists
+    #  why? because when a new chat message for a new conversation appears
+    #  a skeleton is made of a conversation
+    conv.add c unless conv[c?.conversation_id?.id].participant_data?
 
 handle 'hangout_event', (e) ->
     return unless e?.hangout_event?.event_type in ['START_HANGOUT', 'END_HANGOUT']

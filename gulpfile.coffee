@@ -17,6 +17,8 @@ filter     = require 'gulp-filter'
 Q          = require 'q'
 Stream     = require 'stream'
 spawn      = require('child_process').spawn
+# running tasks in sequence
+runSequence = require('run-sequence')
 
 #
 #
@@ -33,6 +35,7 @@ paths =
     html:    './src/**/*.html'
     images:  './src/**/images/*.*'
     icons:   './src/icons'
+    media:   './src/media/*.*'
     less:    './src/ui/css/manifest.less'
     lessd:   './src/ui/css/**/*.less'
     css:     './src/**/*.css'
@@ -105,6 +108,11 @@ gulp.task 'html', ->
         .pipe gulp.dest outapp
 
 # copy images
+gulp.task 'media', ->
+    gulp.src paths.media
+        .pipe gulp.dest path.join outapp, 'media'
+
+# copy images
 gulp.task 'images', ->
     gulp.src paths.images
         .pipe gulp.dest outapp
@@ -172,7 +180,7 @@ gulp.task 'reloader', ->
 gulp.task 'clean', (cb) ->
     rimraf outapp, cb
 
-gulp.task 'default', ['package', 'coffee', 'html', 'images',
+gulp.task 'default', ['package', 'coffee', 'html', 'images', 'media',
                       'icons', 'less', 'fontello']
 
 gulp.task 'watch', ['default', 'reloader', 'html'], ->
@@ -195,7 +203,8 @@ buildDeployTask = (platform, arch) ->
     gulp.task tasknameNoDep, ()->
         deploy platform, arch
     # set task with dependencies
-    gulp.task taskname, ['default'].concat tasknameNoDep
+    gulp.task taskname, (cb) ->
+      runSequence 'default', tasknameNoDep, cb
     #
     tasknameNoDep
 
@@ -213,9 +222,14 @@ platformOpts.map (plat) ->
         allNames.push taskName
     #
     # create arch-independet task
-    gulp.task "deploy:#{plat}", ['default'].concat names
+    gulp.task "deploy:#{plat}", (cb) ->
+      # add callback to arguments
+      names.push cb
+      runSequence 'default', names...
     #
-gulp.task 'deploy', ['default'].concat allNames
+gulp.task 'deploy', (cb)->
+    allNames.push cb
+    runSequence 'default', allNames...
 
 zipIt = (folder, filePrefix, done) ->
     ext = 'zip'
@@ -294,7 +308,10 @@ deploy = (platform, arch) ->
         else if appPaths?.length > 0
             json = JSON.parse(fs.readFileSync('./package.json'))
             zippath = "#{appPaths[0]}/"
-            fileprefix = "yakyak-#{json.version}-#{platform}-#{arch}"
+            if platform == 'darwin'
+                fileprefix = "yakyak-#{json.version}-osx"
+            else
+                fileprefix = "yakyak-#{json.version}-#{platform}-#{arch}"
 
             if platform == 'linux'
                 tarIt zippath, fileprefix, -> deferred.resolve()

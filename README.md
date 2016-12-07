@@ -16,12 +16,12 @@ We provide [prebuilt binaries](https://github.com/yakyak/yakyak/releases) for Ma
 This is the [latest release](https://github.com/yakyak/yakyak/releases/latest).
 We love [bug reports](https://github.com/yakyak/yakyak/issues)!
 
-What does it do:
+## What does it do:
 
 * Send/receive chat messages
 * Create/change conversations (rename, add people)
 * Leave/delete conversation
-* Notifications
+* Notifications (using native OS notifications)
 * Toggle notifications on/off
 * Drag-drop, copy-paste or attach-button for image upload.
 * Hangupsbot sync room aware (no bot name, proper user pics)
@@ -109,3 +109,8 @@ $ npm run deploy:darwin-x64
 | `src/`    | Is where sources live                    |
 | `src/ui/` | Holds renderer code (client side)        |
 | `dist/`   | Everything is compiled to this directory |
+
+### Acknowledgement 
+
+- All the users and developers of YakYak
+- ["You wouldn't believe"](https://notificationsounds.com/notification-sounds/you-wouldnt-believe-510) as the 'new message' sound for some platforms and is licensed under CC

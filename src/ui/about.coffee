@@ -1,16 +1,40 @@
+path      = require 'path'
+trifl     = require 'trifl'
 ipc       = require('electron').ipcRenderer
-path = require 'path'
+remote    = require('electron').remote
+clipboard = require('electron').clipboard
+Menu      = remote.Menu
 
-remote = require('electron').remote
+#
+#
+# Catches errors in window and show them in the console
+#
+window.onerror = (msg, url, lineNo, columnNo, error) ->
+    hash = {msg, url, lineNo, columnNo, error}
+    ipc.send 'errorInWindow', hash, "About"
 
-trifl = require 'trifl'
+aboutlayout = require './views/aboutlayout'
 
-# expose some selected tagg functions
-trifl.tagg.expose window, ('ul li div span a i b u s button p label
-input table thead tbody tr td th textarea br pass img h1 h2 h3 h4
-hr em'.split(' '))...
-
-{applayout, aboutlayout} = require './views'
+aboutWindow = remote.getCurrentWindow()
+# simple context menu that can only copy
+aboutWindow.webContents.on 'context-menu', (e, params) ->
+    e.preventDefault()
+    menuTemplate = [{
+        label: 'Copy'
+        role: 'copy'
+        enabled: params.editFlags.canCopy
+    }
+    {
+        label: "Copy Link"
+        visible: params.linkURL != '' and params.mediaType == 'none'
+        click: () ->
+            if process.platform == 'darwin'
+                clipboard
+                .writeBookmark params.linkText, params.linkText
+            else
+                clipboard.writeText params.linkText
+    }]
+    Menu.buildFromTemplate(menuTemplate).popup aboutWindow
 
 document.body.appendChild aboutlayout.el
 

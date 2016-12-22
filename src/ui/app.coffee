@@ -1,4 +1,5 @@
 ipc       = require('electron').ipcRenderer
+clipboard = require('electron').clipboard
 
 # expose trifl in global scope
 trifl = require 'trifl'
@@ -34,7 +35,9 @@ require('./views/menu')(viewstate)
 # tie layout to DOM
 
 # restore last position of window
-remote.getCurrentWindow().setPosition viewstate.pos...
+currentWindow = remote.getCurrentWindow()
+
+currentWindow.setPosition viewstate.pos...
 
 document.body.appendChild applayout.el
 
@@ -54,6 +57,17 @@ do ->
 ipc.on 'ready-to-show', () ->
     # get window object
     mainWindow = remote.getCurrentWindow()
+    #
+    # when yakyak becomes active, focus is automatically given
+    #  to textarea
+    mainWindow.on 'focus', () ->
+        if viewstate.state == viewstate.STATE_NORMAL
+            # focus on webContents
+            mainWindow.webContents.focus()
+            el = window.document.getElementById('message-input')
+            # focus on specific element
+            el?.focus()
+
     # hide menu bar in all platforms but darwin
     unless process.platform is 'darwin'
         mainWindow.setAutoHideMenuBar(true)
@@ -64,6 +78,16 @@ ipc.on 'ready-to-show', () ->
     else if !remote.getGlobal('windowHideWhileCred')? ||
              remote.getGlobal('windowHideWhileCred') != true
         mainWindow.show()
+
+#
+#
+# Get information on exceptions in main process
+#  - Exceptions that were caught
+#  - Window crashes
+ipc.on 'expcetioninmain', (error) ->
+    console.log (msg = "Possible fatal error on main process" +
+        ", YakYak could stop working as expected."), error
+    notr msg, {stay: 0}
 
 # wire up stuff from server
 ipc.on 'init', (ev, data) -> dispatcher.init data
@@ -102,6 +126,24 @@ require './views/controller'
 # dev mode when we reload the page
 action 'reqinit'
 
+#
+#
+# Listen to paste event and paste to message textarea
+#
+#  The only time when this event is not triggered, is when
+#   the event is triggered from the message-area itself
+#
+document.addEventListener 'paste', (e) ->
+    if not clipboard.readImage().isEmpty() and not clipboard.readText()
+        action 'onpasteimage'
+        e.preventDefault()
+    # focus on web contents
+    mainWindow = remote.getCurrentWindow()
+    mainWindow.webContents.focus()
+    # focus on textarea
+    el = window.document.getElementById('message-input')
+    el?.focus()
+
 # register event listeners for on/offline
 window.addEventListener 'online',  -> action 'wonline', true
 window.addEventListener 'offline', -> action 'wonline', false
@@ -118,6 +160,21 @@ window.addEventListener 'unload', (ev) ->
 
     window = null
     action 'quit'
+
+#
+#
+# Catch unresponsive events
+remote.getCurrentWindow().on 'unresponsive', (error) ->
+    notr msg = "Warning: YakYak is becoming unresponsive.",
+        { id: 'unresponsive'}
+    console.log 'Unresponsive event', msg
+    ipc.send 'errorInWindow', 'Unresponsive window'
+
+#
+#
+# Show a message
+remote.getCurrentWindow().on 'responsive', () ->
+    notr "Back to normal again!", { id: 'unresponsive'}
 
 # Listen to close and quit events
 window.addEventListener 'beforeunload', (e) ->
@@ -136,11 +193,12 @@ window.addEventListener 'beforeunload', (e) ->
         remote.getCurrentWindow().hide()
     return
 
-window.addEventListener 'contextmenu', ((e) ->
-      e.preventDefault()
-      contextmenu.popup remote.getCurrentWindow()
-      return
-), false
+currentWindow.webContents.on 'context-menu', (e, params) ->
+    e.preventDefault()
+    canShow = [viewstate.STATE_NORMAL,
+               viewstate.STATE_ADD_CONVERSATION].includes(viewstate.state)
+    if canShow
+        contextmenu(params, viewstate).popup remote.getCurrentWindow()
 
 # tell the startup state
 action 'wonline', window.navigator.onLine

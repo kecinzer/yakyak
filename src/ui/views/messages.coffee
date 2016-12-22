@@ -102,11 +102,17 @@ module.exports = view (models) ->
           entity.needEntity participant.chat_id
     div class:'messages', observe:onMutate(viewstate), ->
         return unless c?.event
+
         grouped = groupEvents c.event, entity
         div class:'historyinfo', ->
             if c.requestinghistory
                 pass 'Requesting history…', -> span class:'material-icons spin', 'donut_large'
         moment.locale(window.navigator.language)
+
+        last_seen = conv.findLastReadEventsByUser(c)
+        last_seen_chat_ids_with_event = (last_seen, event) ->
+          (chat_id for chat_id, e of last_seen when event is e)
+
         for g in grouped
             div class:'timestamp', moment(g.start / 1000).calendar()
             for u in g.byuser
@@ -122,15 +128,22 @@ module.exports = view (models) ->
                         clz.push 'self' if entity.isSelf(u.cid)
                         div class:clz.join(' '), ->
                             drawMessageAvatar u, sender, viewstate, entity
-                            if entity.isSelf(u.cid)
-                                drawSeenElement(c, u, entity, events, viewstate)
                             div class:'umessages', ->
                                 drawMessage(e, entity) for e in events
                             , onDOMSubtreeModified: (e) ->
                                 window.twemoji?.parse e.target if process.platform == 'win32'
-                            unless entity.isSelf(u.cid)
-                                drawSeenElement(c, u, entity, events, viewstate)
 
+                            # at the end of the events group we draw who has read any of its events
+                            div class: 'seen-list', () ->
+                                for e in events
+                                    for chat_id in last_seen_chat_ids_with_event(last_seen, e)
+                                        skip = entity.isSelf(chat_id) or (chat_id == u.cid)
+                                        drawSeenAvatar(
+                                            entity[chat_id],
+                                            e.event_id,
+                                            viewstate,
+                                            entity
+                                        ) if not skip
 
     # Go through all the participants and only show his last seen status
     if c?.current_participant?
@@ -151,27 +164,6 @@ module.exports = view (models) ->
 drawMessageAvatar = (u, sender, viewstate, entity) ->
     a href:linkto(u.cid), title: sender, {onclick}, class:'sender', ->
         drawAvatar(u.cid, viewstate, entity)
-
-drawSeenElement = (c, u, entity, events, viewstate) ->
-    temp_set = new Set()
-    for contact in c.read_state
-        other = contact.participant_id.chat_id
-        #
-        # watermark and conversation have different wording for the
-        #  last read timestamp, which is unfortunate
-        #
-        #  TODO: make them have the same name
-        last_r = contact.last_read_timestamp ? contact.latest_read_timestamp
-        if other != u.cid &&
-           !entity.isSelf(other) &&
-           # only add "seen" avatar if last message from group is seen
-           last_r >= events[events.length - 1].timestamp
-            if !temp_set.has(entity[other].id)
-                temp_set.add entity[other].id
-                drawSeenAvatar entity[other]
-                    , events[events.length - 1].event_id
-                    , viewstate
-                    , entity
 
 groupEventsByMessageType = (event) ->
     res = []
@@ -194,7 +186,7 @@ isMeMessage = (e) ->
 
 drawSeenAvatar = (u, event_id, viewstate, entity) ->
     initials = initialsof u
-    span class: "seen"
+    div class: "seen"
     , "data-id": u.id
     , "data-event-id": event_id
     , title: u.display_name

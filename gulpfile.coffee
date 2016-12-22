@@ -291,7 +291,6 @@ deploy = (platform, arch) ->
     #
     # necessary to add a callback to pipe (which is used to signal end of task)
     gulpCallback = (obj) ->
-        "use strict"
         stream = new Stream.Transform({objectMode: true})
         stream._transform = (file, unused, callback) ->
             obj()
@@ -306,6 +305,8 @@ deploy = (platform, arch) ->
         if err?
             console.log ('Error: ' + err) if err?
         else if appPaths?.length > 0
+            if process.env.NO_ZIP
+                return deferred.resolve()
             json = JSON.parse(fs.readFileSync('./package.json'))
             zippath = "#{appPaths[0]}/"
             if platform == 'darwin'
